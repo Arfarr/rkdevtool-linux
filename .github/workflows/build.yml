@@ -25,8 +25,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake pkg-config \
-            qtbase5-dev libqt5svg5 fonts-noto-cjk \
-            libusb-1.0-0-dev desktop-file-utils
+            qtbase5-dev libusb-1.0-0-dev fonts-noto-cjk \
+            desktop-file-utils
 
       - name: 编译
         run: |

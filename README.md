@@ -80,30 +80,68 @@ Rockchip 官方 RKDevTool 图形界面仅提供 Windows 版，Linux 侧官方只
 ## 依赖与构建
 
 ```bash
-sudo apt install build-essential cmake qtbase5-dev libusb-1.0-0-dev pkg-config
+sudo apt install build-essential cmake pkg-config \
+    qtbase5-dev libusb-1.0-0-dev fonts-noto-cjk
 cmake -S . -B build
 cmake --build build -j"$(nproc)"
 ```
 
+`fonts-noto-cjk` 是硬依赖：缺中文字体时界面会显示乱码或豆腐块。程序会在多个
+候选字体中自动选择（见 `src/main.cpp` 的 `pickFontFamily`），但系统里至少要装
+一个 CJK 字体。
+
 ## 放置后端工具
 
-后端 `upgrade_tool` 是 Rockchip 官方闭源二进制，**不随本仓库分发**，请自行从官方
-获取。程序按以下顺序查找，放在任一位置即可：
+后端 `upgrade_tool` 是 Rockchip 官方闭源二进制，**不随本仓库分发**，请自行获取。
+它只要压缩包里的 `upgrade_tool` 这一个文件（与 `revision.txt`、`使用说明.pdf`
+同目录）。
 
-| 优先级 | 路径 | 适用 |
+**最简单的做法**（deb 安装推荐）：
+
+```bash
+sudo mkdir -p /opt/rkdevtool/share/rkdevtool
+sudo cp upgrade_tool /opt/rkdevtool/share/rkdevtool/
+sudo chmod +x /opt/rkdevtool/share/rkdevtool/upgrade_tool
+```
+
+### 查找顺序
+
+日常从应用菜单或 `rkdevtool-launch` 启动时，先由启动器 `packaging/rkdevtool.sh`
+定位后端并写入环境变量，程序再按 `src/paths.cpp` 的顺序兜底：
+
+| 顺序 | 位置 | 谁在找 |
 | --- | --- | --- |
-| 1 | `RKDEVTOOL_UPGRADE_TOOL` 环境变量 | 手动指定，最明确 |
-| 2 | 与本体同前缀的 `share/rkdevtool/` | deb 安装（`/opt/rkdevtool/share/rkdevtool`） |
-| 3 | `~/flash/Linux_Upgrade_Tool_v2.1/` | 手工放置（会递归向下查找） |
-| 4 | `/usr/local/bin/`、`~/.local/bin/` | 自行安装到 PATH |
+| 1 | `$RKDEVTOOL_UPGRADE_TOOL` | 环境变量，最高优先级 |
+| 2 | `<本体所在前缀>/share/rkdevtool/` | 启动器 |
+| 3 | `<本体所在目录>/share/rkdevtool/` | 启动器 |
+| 4 | `/opt/rkdevtool/share/rkdevtool/` | 启动器 |
+| 5 | `~/flash/Linux_Upgrade_Tool_v2.1/` | 两者都找 |
+| 6 | `~/flash/Linux_Upgrade_Tool_v1.65/` | 仅启动器 |
+| 7 | `~/Downloads/Linux_Upgrade_Tool_v2.1/` | 两者都找 |
+| 8 | `~/downloads/Linux_Upgrade_Tool_v2.1/` | 两者都找 |
+| 9 | `~/downloads/Linux_Upgrade_Tool_v1.65/` | 仅启动器 |
+| 10 | `~/rockchip/Linux_Upgrade_Tool_v2.1/` | 仅程序 |
+| 11 | `<本体所在目录>/`（deb 即 `/opt/rkdevtool/bin/`） | 程序 |
+| 12 | `~/.local/share/rkdevtool/` | 程序 |
+| 13 | `/opt/rkdevtool/` | 程序 |
 
-例如放到 `~/flash/` 下：
+> [!NOTE]
+> 直接执行 `RKDevTool` 二进制（不经启动器）时，第 6、8、9、10 项由程序自己解析，
+> 路径与上表一致。两者对 `v1.65` 的支持不同：启动器认，启动器之外的程序入口不认。
+> 所以日常请用菜单或 `rkdevtool-launch` 启动。
 
+找不到时程序会在日志打印 `[警告] 未找到 upgrade_tool`，界面仍可浏览，
+但所有需要读写硬件的操作会失败。可用环境变量显式指定，最可靠：
+
+```bash
+export RKDEVTOOL_UPGRADE_TOOL=/完整路径/upgrade_tool
 ```
-~/flash/Linux_Upgrade_Tool_v2.1/upgrade_tool
-```
 
-启动时若仍未找到，日志会给出警告，不影响界面浏览。
+确认是否就位：
+
+```bash
+ls -l /opt/rkdevtool/share/rkdevtool/upgrade_tool
+```
 
 ## 安装
 

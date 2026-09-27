@@ -15,7 +15,8 @@ MODE="${1:-install}"
 
 check_deps() {
     local missing=()
-    for pkg in build-essential cmake pkg-config qtbase5-dev libusb-1.0-0-dev; do
+    # fonts-noto-cjk 缺失时界面会中文乱码，属硬依赖，缺一并装
+    for pkg in build-essential cmake pkg-config qtbase5-dev libusb-1.0-0-dev fonts-noto-cjk; do
         dpkg -s "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
     done
     if [ ${#missing[@]} -gt 0 ]; then
