@@ -1,0 +1,8 @@
+# Rockchip USB 设备权限规则
+# 使普通用户可直接使用 RKDevTool / upgrade_tool，无需 root
+# MaskRom: 2207:0006  Loader/UVC: 2207:350a-3520
+
+SUBSYSTEM=="usb", ATTR{idVendor}=="2207", MODE="0666", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="2207", ATTR{bcdDevice}=="0100", MODE="0666", TAG+="uaccess"
+KERNEL=="rockusb*", MODE="0666", TAG+="uaccess"
+SUBSYSTEM=="tty", ATTS{idVendor}=="2207", MODE="0666", TAG+="uaccess"

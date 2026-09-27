@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=RKDevTool
+Name[zh_CN]=RKDevTool 烧写工具
+Comment=Rockchip USB 烧录工具（Windows 版 RKDevTool 的 Linux 复刻）
+Comment[zh_CN]=瑞芯微 USB 烧录工具
+Exec=@EXEC@
+Icon=rkdevtool
+TryExec=@EXEC@
+Terminal=false
+Categories=Development;Electronics;
+Keywords=rockchip;rk3566;flash;upgrade;烧录;烧写;
+StartupNotify=true

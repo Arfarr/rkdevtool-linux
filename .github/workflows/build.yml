@@ -1,0 +1,91 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # 与开发环境保持一致：依赖包名（libqt5core5a 等）在 24.04 上是 t64 系列
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装构建依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake pkg-config \
+            qtbase5-dev libqt5svg5 fonts-noto-cjk \
+            libusb-1.0-0-dev desktop-file-utils
+
+      - name: 编译
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+
+      - name: 自检
+        run: |
+          # 用 Qt 的 offscreen 平台插件代替 xvfb：无需额外 X 服务，启动更快。
+          # 不跑依赖真机的指令（ld/pl/di），CI 上没有硬件。
+          env -u DISPLAY QT_QPA_PLATFORM=offscreen \
+            ./build/RKDevTool --selftest --test-cmd="tab #text" \
+            | tee selftest.log
+
+      - name: 校验自检结果
+        run: |
+          # 字形检查必须为 0，否则说明控件文本被错误编码或缺中文字体
+          grep -q "glyph-bad widgets=0" selftest.log \
+            || { echo "::error::存在无法渲染的控件文本（中文乱码）"; grep "BAD " selftest.log || true; exit 1; }
+          # 布局溢出同样是回归
+          grep -q "layout overflow=0" selftest.log \
+            || { echo "::error::布局溢出"; exit 1; }
+          grep -q "中文OK" selftest.log \
+            || { echo "::error::中文字体自检未通过"; exit 1; }
+
+      - name: 校验桌面文件
+        run: |
+          # 桌面文件含 @EXEC@ 占位符，校验模板的语法
+          sed 's|@EXEC@|/usr/bin/true|' packaging/rkdevtool.desktop > /tmp/check.desktop
+          desktop-file-validate /tmp/check.desktop
+
+      - name: 打包 deb
+        run: |
+          # 闭源的 upgrade_tool 不随代码分发，CI 拿不到，故生成不含后端的包。
+          # 需要完整自包含包的构建者在本机跑 packaging/build-deb.sh。
+          chmod +x packaging/build-deb.sh
+          SKIP_UPGRADE_TOOL=1 ./packaging/build-deb.sh
+
+      - name: 校验 deb
+        run: |
+          DEB=$(ls dist/*.deb)
+          echo "产物：$DEB"
+          dpkg-deb --info "$DEB"
+          # 校验 TryExec 指向的程序确实在包里，否则 GNOME 菜单不会有条目
+          EXEC=$(dpkg-deb --fsys-tarfile "$DEB" \
+                 | tar -xO ./usr/share/applications/rkdevtool.desktop \
+                 | sed -n 's/^TryExec=//p')
+          echo "TryExec=$EXEC"
+          dpkg-deb --fsys-tarfile "$DEB" | tar -tf - | grep -qF "opt/rkdevtool/bin/rkdevtool-launch" \
+            || { echo "::error::包内缺少启动器，TryExec 会失效：$EXEC"; exit 1; }
+          desktop_file=$(mktemp --suffix=.desktop)
+          dpkg-deb --fsys-tarfile "$DEB" | tar -xO ./usr/share/applications/rkdevtool.desktop > "$desktop_file"
+          desktop-file-validate "$desktop_file"
+
+      - name: 上传 deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: rkdevtool-deb
+          path: dist/*.deb
+          if-no-files-found: error
+
+      - name: 发布到 Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.deb
+          generate_release_notes: true

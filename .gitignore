@@ -1,0 +1,36 @@
+# 构建产物
+build/
+dist/
+*.deb
+
+# 打包中间目录
+build/deb-stage/
+
+# Rockchip 官方闭源后端与随包文档：闭源且有再分发限制，
+# 不进版本库。build-deb.sh 从 UPGRADE_TOOL_DIR 指向的本地目录读取它们。
+upgrade_tool
+*.pdf
+
+# 运行时日志与配置
+*.log
+*.ini
+
+# 编译中间文件
+*.o
+*.so
+*.a
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.user
+
+# 编辑器与系统
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
